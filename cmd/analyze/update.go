@@ -854,6 +854,36 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.status = fmt.Sprintf("Previewing %s...", selected.Name)
 			}
 		}
+	case "A":
+		if m.scanning {
+			m.status = "Selection is available after the scan finishes"
+			return m, nil
+		}
+		if m.showLargeFiles && len(m.largeFiles) > 0 {
+			viewport := calculateViewport(m.height, true)
+			start, end := visibleRowRange(len(m.largeFiles), m.largeOffset, viewport)
+
+			// Rebuild from the rendered window so a bulk delete cannot retain an
+			// off-screen path from an earlier selection.
+			m.largeMultiSelected = make(map[string]bool, end-start)
+			var totalSize int64
+			for _, file := range m.largeFiles[start:end] {
+				m.largeMultiSelected[file.Path] = true
+				totalSize += file.Size
+			}
+			m.status = fmt.Sprintf("%d selected, %s", len(m.largeMultiSelected), humanizeBytes(totalSize))
+		} else if len(m.entries) > 0 && !m.inOverviewMode() {
+			viewport := calculateViewport(m.height, false)
+			start, end := visibleRowRange(len(m.entries), m.offset, viewport)
+
+			m.multiSelected = make(map[string]bool, end-start)
+			var totalSize int64
+			for _, entry := range m.entries[start:end] {
+				m.multiSelected[entry.Path] = true
+				totalSize += entry.Size
+			}
+			m.status = fmt.Sprintf("%d selected, %s", len(m.multiSelected), humanizeBytes(totalSize))
+		}
 	case " ":
 		if m.scanning {
 			m.status = "Selection is available after the scan finishes"

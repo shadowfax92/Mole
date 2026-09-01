@@ -228,6 +228,18 @@ func (m *model) getScanProgress() (files, dirs, bytes int64) {
 	return
 }
 
+// visibleRowRange is the shared scroll-to-row translation for rendering and
+// bulk selection. Keeping one range calculation ensures A cannot select rows
+// that the current terminal viewport did not show.
+func visibleRowRange(length, offset, viewport int) (start, end int) {
+	if length <= 0 || viewport <= 0 {
+		return 0, 0
+	}
+	start = min(max(offset, 0), length)
+	end = min(start+viewport, length)
+	return start, end
+}
+
 func (m *model) clampEntrySelection() {
 	if len(m.entries) == 0 {
 		m.selected = 0

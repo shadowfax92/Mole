@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -26,6 +27,41 @@ func topFilesFixture() model {
 		largeMultiSelected: map[string]bool{},
 		height:             40,
 		width:              120,
+	}
+}
+
+func TestUpdateCapitalASelectsEveryVisibleTopFile(t *testing.T) {
+	files := make([]fileEntry, maxLargeFiles)
+	for i := range files {
+		files[i] = fileEntry{
+			Name: fmt.Sprintf("file-%02d.bin", i+1),
+			Path: fmt.Sprintf("/tmp/p/file-%02d.bin", i+1),
+			Size: int64(i + 1),
+		}
+	}
+	m := model{
+		path:               "/tmp/p",
+		showLargeFiles:     true,
+		largeFiles:         files,
+		largeFilesAll:      slices.Clone(files),
+		largeMultiSelected: map[string]bool{},
+		height:             40,
+		width:              120,
+	}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	got := updated.(model)
+
+	if len(got.largeMultiSelected) != 20 {
+		t.Fatalf("A should select all 20 visible Top files, got %d", len(got.largeMultiSelected))
+	}
+	for _, file := range files {
+		if !got.largeMultiSelected[file.Path] {
+			t.Fatalf("A left visible file unselected: %s", file.Path)
+		}
+	}
+	if got.status != "20 selected, 210 B" {
+		t.Fatalf("selection status = %q, want %q", got.status, "20 selected, 210 B")
 	}
 }
 
@@ -185,6 +221,32 @@ func treeFixture() model {
 	}
 }
 
+func TestUpdateCapitalASelectsOnlyVisibleDirectoryRows(t *testing.T) {
+	m := treeFixture()
+	m.height = 8 // Two directory rows after the header and footer.
+	m.offset = 1
+	m.selected = 1
+	m.multiSelected = map[string]bool{"/tmp/p/apps": true}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	got := updated.(model)
+
+	if len(got.multiSelected) != 2 {
+		t.Fatalf("A should replace selection with the 2 visible rows, got %d", len(got.multiSelected))
+	}
+	for _, path := range []string{"/tmp/p/logs", "/tmp/p/node_modules"} {
+		if !got.multiSelected[path] {
+			t.Fatalf("A left visible row unselected: %s", path)
+		}
+	}
+	if got.multiSelected["/tmp/p/apps"] {
+		t.Fatal("A retained an off-screen row in the delete selection")
+	}
+	if got.status != "2 selected, 300 B" {
+		t.Fatalf("selection status = %q, want %q", got.status, "2 selected, 300 B")
+	}
+}
+
 func TestEntryFilterNarrowsApplyAndClear(t *testing.T) {
 	m := treeFixture()
 
@@ -329,6 +391,19 @@ func TestEntryFilterViewShowsHintAndQuery(t *testing.T) {
 	}
 	if !strings.Contains(view, "No matches") && !strings.Contains(view, "node_modules") {
 		t.Fatalf("expected the single match rendered, got:\n%s", view)
+	}
+}
+
+func TestViewShowsCapitalASelectAllShortcut(t *testing.T) {
+	for name, m := range map[string]model{
+		"Top files": topFilesFixture(),
+		"directory": treeFixture(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if view := m.View(); !strings.Contains(view, "A All") {
+				t.Fatalf("expected A select-all footer hint, got:\n%s", view)
+			}
+		})
 	}
 }
 
