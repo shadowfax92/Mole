@@ -422,6 +422,64 @@ func TestUpdateKeyCtrlCQuits(t *testing.T) {
 	}
 }
 
+func TestUpdateSpaceTogglesSelectedOverviewEntry(t *testing.T) {
+	entries := []dirEntry{
+		{Name: "Home", Path: "/Users/test", Size: 1000, IsDir: true},
+		{Name: "Downloads", Path: "/Users/test/Downloads", Size: 2000, IsDir: true},
+	}
+	m := model{
+		path:       "/",
+		isOverview: true,
+		entries:    entries,
+		selected:   1,
+		totalSize:  3000,
+		status:     "Ready",
+	}
+
+	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	if cmd != nil {
+		t.Fatalf("selecting an overview row should not emit a command, got %v", cmd)
+	}
+	got, ok := updated.(model)
+	if !ok {
+		t.Fatalf("expected model, got %T", updated)
+	}
+	if len(got.multiSelected) != 1 || !got.multiSelected[entries[1].Path] {
+		t.Fatalf("expected only highlighted overview row selected, got %#v", got.multiSelected)
+	}
+	if got.multiSelected[entries[0].Path] {
+		t.Fatalf("Space must not select every overview row, got %#v", got.multiSelected)
+	}
+	if got.status != "1 selected, 2.0 kB" {
+		t.Fatalf("unexpected selection status %q", got.status)
+	}
+
+	// Overview rows mix protected navigation roots with derived insights such
+	// as Old Downloads, whose displayed size represents only part of its path.
+	// Making the row selectable must not turn that representation into delete
+	// authority for the whole directory.
+	updated, cmd = got.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	if cmd != nil {
+		t.Fatalf("overview delete should remain unavailable, got command %v", cmd)
+	}
+	got = updated.(model)
+	if got.deleteConfirm {
+		t.Fatal("overview selection must not open delete confirmation")
+	}
+
+	updated, cmd = got.Update(tea.KeyMsg{Type: tea.KeySpace})
+	if cmd != nil {
+		t.Fatalf("clearing an overview selection should not emit a command, got %v", cmd)
+	}
+	got = updated.(model)
+	if len(got.multiSelected) != 0 {
+		t.Fatalf("expected highlighted overview row deselected, got %#v", got.multiSelected)
+	}
+	if got.status != "Scanned 3.0 kB" {
+		t.Fatalf("unexpected cleared-selection status %q", got.status)
+	}
+}
+
 func TestIsAppBundleEntry(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -536,6 +594,24 @@ func TestViewShowsEscBackAndCtrlCQuitHints(t *testing.T) {
 	}
 	if !strings.Contains(view, "Ctrl+C Quit") {
 		t.Fatalf("expected Ctrl+C Quit hint in view, got:\n%s", view)
+	}
+}
+
+func TestOverviewViewShowsSpaceSelectHint(t *testing.T) {
+	selectedPath := "/Users/test/Downloads"
+	m := model{
+		path:          "/",
+		isOverview:    true,
+		entries:       []dirEntry{{Name: "Downloads", Path: selectedPath, Size: 1000, IsDir: true}},
+		multiSelected: map[string]bool{selectedPath: true},
+	}
+
+	view := m.View()
+	if !strings.Contains(view, "Space Select") {
+		t.Fatalf("expected overview selection hint, got:\n%s", view)
+	}
+	if !strings.Contains(view, "●") {
+		t.Fatalf("expected selected overview row marker, got:\n%s", view)
 	}
 }
 

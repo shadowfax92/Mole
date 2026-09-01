@@ -261,11 +261,19 @@ func (m model) View() string {
 					name := trimNameWithWidth(entry.Name, nameWidth)
 					paddedName := padName(name, nameWidth)
 					nameSegment := paddedName
+					isMultiSelected := m.multiSelected != nil && m.multiSelected[entry.Path]
+					selectIcon := "○"
+					if isMultiSelected {
+						selectIcon = fmt.Sprintf("%s●%s", colorGreen, colorReset)
+						nameSegment = fmt.Sprintf("%s%s%s", colorGreen, paddedName, colorReset)
+					}
 					numColor := ""
 					percentColor := ""
 					if idx == m.selected {
 						entryPrefix = fmt.Sprintf(" %s%s▶%s ", colorCyan, colorBold, colorReset)
-						nameSegment = fmt.Sprintf("%s%s%s", colorCyan, paddedName, colorReset)
+						if !isMultiSelected {
+							nameSegment = fmt.Sprintf("%s%s%s", colorCyan, paddedName, colorReset)
+						}
 						numColor = colorCyan
 						percentColor = colorCyan
 						sizeColor = colorCyan
@@ -281,12 +289,12 @@ func (m model) View() string {
 					}
 
 					if hintLabel == "" {
-						fmt.Fprintf(&b, "%s%s%2d.%s %s %s%s%s  |  %s %s%10s%s\n",
-							entryPrefix, numColor, displayIndex, colorReset, bar, percentColor, percentStr, colorReset,
+						fmt.Fprintf(&b, "%s%s %s%2d.%s %s %s%s%s  |  %s %s%10s%s\n",
+							entryPrefix, selectIcon, numColor, displayIndex, colorReset, bar, percentColor, percentStr, colorReset,
 							nameSegment, sizeColor, sizeText, colorReset)
 					} else {
-						fmt.Fprintf(&b, "%s%s%2d.%s %s %s%s%s  |  %s %s%10s%s  %s\n",
-							entryPrefix, numColor, displayIndex, colorReset, bar, percentColor, percentStr, colorReset,
+						fmt.Fprintf(&b, "%s%s %s%2d.%s %s %s%s%s  |  %s %s%10s%s  %s\n",
+							entryPrefix, selectIcon, numColor, displayIndex, colorReset, bar, percentColor, percentStr, colorReset,
 							nameSegment, sizeColor, sizeText, colorReset, hintLabel)
 					}
 				}
@@ -372,9 +380,9 @@ func (m model) View() string {
 	fmt.Fprintln(&b)
 	if m.inOverviewMode() {
 		if len(m.history) > 0 {
-			fmt.Fprintf(&b, "%s↑↓←→ | Enter | R Refresh | O Open | P Preview | F File | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
+			fmt.Fprintf(&b, "%s↑↓←→ | Enter | Space Select | R Refresh | O Open | P Preview | F File | Esc Back | Q/Ctrl+C Quit%s\n", colorGray, colorReset)
 		} else {
-			fmt.Fprintf(&b, "%s↑↓→ | Enter | R Refresh | O Open | P Preview | F File | Esc/Q Quit%s\n", colorGray, colorReset)
+			fmt.Fprintf(&b, "%s↑↓→ | Enter | Space Select | R Refresh | O Open | P Preview | F File | Esc/Q Quit%s\n", colorGray, colorReset)
 		}
 	} else if m.showLargeFiles {
 		if m.largeFiltering {
