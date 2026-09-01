@@ -897,9 +897,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.status = "Selection is available after the scan finishes"
 			return m, nil
 		}
-		// Overview and drill-down rows share path-keyed selection. This records
-		// user intent only; destructive actions keep their separate mode and
-		// final-sink validation gates.
+		// Toggle multi-select (paths as keys).
 		if m.showLargeFiles {
 			if len(m.largeFiles) > 0 && m.largeSelected < len(m.largeFiles) {
 				if m.largeMultiSelected == nil {
@@ -927,7 +925,7 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					m.status = fmt.Sprintf("Scanned %s", humanizeBytes(m.totalSize))
 				}
 			}
-		} else if len(m.entries) > 0 && m.selected < len(m.entries) {
+		} else if len(m.entries) > 0 && !m.inOverviewMode() && m.selected < len(m.entries) {
 			if m.multiSelected == nil {
 				m.multiSelected = make(map[string]bool)
 			}
