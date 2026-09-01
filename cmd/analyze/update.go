@@ -859,7 +859,11 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.status = "Selection is available after the scan finishes"
 			return m, nil
 		}
-		if m.showLargeFiles && len(m.largeFiles) > 0 {
+		if m.showLargeFiles {
+			if len(m.largeFiles) == 0 {
+				m.largeMultiSelected = make(map[string]bool)
+				return m, nil
+			}
 			viewport := calculateViewport(m.height, true)
 			start, end := visibleRowRange(len(m.largeFiles), m.largeOffset, viewport)
 
@@ -872,7 +876,11 @@ func (m model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				totalSize += file.Size
 			}
 			m.status = fmt.Sprintf("%d selected, %s", len(m.largeMultiSelected), humanizeBytes(totalSize))
-		} else if len(m.entries) > 0 && !m.inOverviewMode() {
+		} else if !m.inOverviewMode() {
+			if len(m.entries) == 0 {
+				m.multiSelected = make(map[string]bool)
+				return m, nil
+			}
 			viewport := calculateViewport(m.height, false)
 			start, end := visibleRowRange(len(m.entries), m.offset, viewport)
 

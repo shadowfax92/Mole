@@ -65,6 +65,23 @@ func TestUpdateCapitalASelectsEveryVisibleTopFile(t *testing.T) {
 	}
 }
 
+func TestUpdateCapitalAWithEmptyTopViewSelectsNothing(t *testing.T) {
+	m := topFilesFixture()
+	m.largeFilter = "no matches"
+	m.largeFiles = nil
+	m.largeMultiSelected = map[string]bool{"/tmp/p/alpha.mp4": true}
+	m.entries = []dirEntry{{Name: "hidden", Path: "/tmp/p/hidden", Size: 100}}
+	m.multiSelected = map[string]bool{}
+
+	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'A'}})
+	got := updated.(model)
+
+	if len(got.largeMultiSelected) != 0 || len(got.multiSelected) != 0 {
+		t.Fatalf("A in an empty Top view must not select hidden rows: top=%d directory=%d",
+			len(got.largeMultiSelected), len(got.multiSelected))
+	}
+}
+
 func filterKey(t *testing.T, m model, msg tea.KeyMsg) (model, tea.Cmd) {
 	t.Helper()
 	updated, cmd := m.updateKey(msg)
