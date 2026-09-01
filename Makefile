@@ -1,9 +1,12 @@
 # Makefile for Mole
 
-.PHONY: all build clean check format test test-go verify release release-amd64 release-arm64 mod-download
+.PHONY: all build install clean check format test test-go verify release release-amd64 release-arm64 mod-download
 
 # Output directory
 BIN_DIR := bin
+
+# User-owned install directory. Override with `make install PREFIX=/path/to/bin`.
+PREFIX ?= $(HOME)/.local/bin
 
 # Go toolchain
 GO ?= go
@@ -42,6 +45,12 @@ build: mod-download
 	@echo "Building for local architecture..."
 	$(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(ANALYZE)-go $(ANALYZE_SRC)
 	$(GO) build -ldflags="$(LDFLAGS)" -o $(BIN_DIR)/$(STATUS)-go $(STATUS_SRC)
+
+# Build first so install.sh consumes this checkout's Go helpers instead of
+# looking for published release artifacts.
+install: build
+	@mkdir -p "$(dir $(PREFIX))"
+	./install.sh --prefix "$(PREFIX)"
 
 check:
 	./scripts/check.sh --no-format
